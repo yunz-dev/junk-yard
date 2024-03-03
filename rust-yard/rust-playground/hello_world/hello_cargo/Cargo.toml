@@ -1,6 +1,5 @@
-workspace = { members = ["hello_world/hello_cargo"] }
 [package]
-name = "rust-playground"
+name = "hello_cargo"
 version = "0.1.0"
 edition = "2021"
 
