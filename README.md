@@ -64,3 +64,10 @@ access at <http://localhost:3000>
 ## challenges
 
 implemented css 3d transforms for card flip animations with react state synchronization. built dual filtering system maintaining separate state for study and manage views to prevent interference. created manual navigation preserving card flip state when moving between cards. developed atomic database reset operation using transaction to delete all records then re-seed defaults ensuring consistency. handled sqlite persistence across container restarts using docker named volumes.
+
+
+# Assignemnt 2 Extension
+
+
+python3 -m app.seed to seed - added logging
+python3 -m pytest tests/
