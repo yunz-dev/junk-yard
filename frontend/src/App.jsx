@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Dog, ChevronLeft, ChevronRight, Shuffle } from 'lucide-react';
+import { Dog, ChevronLeft, ChevronRight, Shuffle, LogOut } from 'lucide-react';
 import Flashcard from './components/Flashcard';
 import FlashcardForm from './components/FlashcardForm';
 import CardList from './components/CardList';
+import Login from './components/Login';
 import { flashcardAPI } from './services/api';
 import './App.css';
 
 export default function App() {
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
+  const [username, setUsername] = useState(() => localStorage.getItem('username') || '');
   const [allCards, setAllCards] = useState([]);
   const [studyCards, setStudyCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -15,9 +18,24 @@ export default function App() {
   const [studyCategory, setStudyCategory] = useState('');
   const [manageCategory, setManageCategory] = useState('');
 
+  const handleLogin = (accessToken, user) => {
+    localStorage.setItem('token', accessToken);
+    localStorage.setItem('username', user);
+    setToken(accessToken);
+    setUsername(user);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    setToken(null);
+    setUsername('');
+    setAllCards([]);
+  };
+
   useEffect(() => {
-    loadCards();
-  }, []);
+    if (token) loadCards();
+  }, [token]);
 
   useEffect(() => {
     filterStudyCards();
@@ -88,6 +106,10 @@ export default function App() {
 
   const currentCard = studyCards[currentIndex];
 
+  if (!token) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -112,6 +134,14 @@ export default function App() {
               onClick={() => setView('manage')}
             >
               Manage
+            </button>
+            <button
+              className="px-4 py-2 border-2 border-black font-medium hover:bg-gray-100 transition-colors flex items-center gap-2 ml-4"
+              onClick={handleLogout}
+              title={`Logged in as ${username}`}
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden md:inline">{username}</span>
             </button>
           </nav>
         </header>
