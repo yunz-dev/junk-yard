@@ -1,9 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from . import models, crud
 from .database import engine, get_db, SessionLocal
 from .seed import seed_database, add_default_cards
+from .auth import hash_password, verify_password, create_access_token, decode_access_token
+from .schemas import AuthRequest
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -60,3 +62,50 @@ def reset_database(db: Session = Depends(get_db)):
     crud.delete_all_flashcards(db)
     add_default_cards(db)
     return {"message": "Database reset to defaults"}
+
+
+@app.post(
+    "/api/register",
+    summary="Create an account",
+    description="Creates a new user and signs them in.",
+)
+def register(body: AuthRequest, db: Session = Depends(get_db)):
+    existing = db.query(models.User).filter(models.User.username == body.username).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already taken")
+    user = models.User(username=body.username, hashed_password=hash_password(body.password))
+    db.add(user)
+    db.commit()
+    token = create_access_token(body.username)
+    return {"access_token": token, "token_type": "bearer", "username": body.username}
+
+
+@app.post(
+    "/api/login",
+    summary="Log in",
+    description="Checks the username and password, then signs the user in.",
+)
+def login(body: AuthRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == body.username).first()
+    if not user or not verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    token = create_access_token(body.username)
+    return {"access_token": token, "token_type": "bearer", "username": body.username}
+
+
+@app.get(
+    "/api/me",
+    summary="Get current user",
+    description="Returns the user for the current login token.",
+)
+def get_me(authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    username = decode_access_token(authorization.split(" ", 1)[1])
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return {"username": user.username}
+

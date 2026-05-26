@@ -71,3 +71,10 @@ implemented css 3d transforms for card flip animations with react state synchron
 
 python3 -m app.seed to seed - added logging
 python3 -m pytest tests/
+
+- **`POST /api/register`** — creates a new user with a bcrypt-hashed password and returns a jwt - prevents duplicate usernames with a `400`
+- **`POST /api/login`** — verifies password against stored hash; returns a jwt on success, `401` when  wrong
+- **`GET /api/me`** — decodes the bearer token and returns the authenticated username; `401` if missing or invalid
+
+- **why jwt?** stateless — the backend doesn't need a session store; tokens expire after 24 h
+- **why bcrypt?** slow by design, resistant to brute-force
