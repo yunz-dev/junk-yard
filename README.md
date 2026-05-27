@@ -1,80 +1,121 @@
-# ni-howl
+# Ni-Howl
 
-chinese language flashcard learning application
+A Chinese flashcard study app with role-based access control. Regular users can browse and study flashcards and track their own progress. Admins can manage the flashcard library and all user accounts.
 
-## problem
+---
 
-helps users learn chinese vocabulary through interactive digital flashcards with character, pinyin and english translations organized by difficulty level
+## Technical Stack
 
-## technical stack
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, Vite, Tailwind CSS |
+| Backend | Python 3.11, FastAPI, SQLAlchemy |
+| Database | SQLite (persisted via Docker volume) |
+| Auth | JWT (PyJWT, HS256), bcrypt password hashing |
+| Containerisation | Docker, Docker Compose |
 
-- frontend: react with vite
-- styling: tailwind css
-- routing: single-page application, no routing library needed
-- backend: fastapi
-- database: sqlite with sqlalchemy orm
-- deployment: docker compose
+---
 
-## features
+## Running the App
 
-- create, read, update, delete flashcard operations
-- chinese characters with pinyin romanization and english translations
-- category organization by hsk levels and topics
-- interactive card flip animation
-- previous and next navigation between cards
-- shuffle functionality for randomized study order
-- category filtering in study mode
-- category filtering in manage mode
-- 50 default flashcards seeded on first launch
-- database reset with browser confirmation dialog
-- single-page application architecture
-- responsive mobile design
-- minimal design with red, yellow, black, white color scheme
-
-## project structure
-
-```
-ni-howl/
-├── backend/
-│   ├── app/
-│   │   ├── main.py - api endpoints
-│   │   ├── models.py - database models
-│   │   ├── crud.py - database operations
-│   │   ├── database.py - database configuration
-│   │   └── seed.py - default flashcard data
-│   └── Dockerfile
-├── frontend/
-│   ├── src/
-│   │   ├── components/ - react ui components
-│   │   ├── services/ - api client functions
-│   │   ├── App.jsx - main application component
-│   │   └── App.css - tailwind directives
-│   └── Dockerfile
-└── docker-compose.yml
-```
-
-## setup
+**Prerequisites:** Docker and Docker Compose
 
 ```bash
-docker-compose up
+git clone <repo-url>
+cd junk-yard
+docker compose up --build
 ```
 
-access at <http://localhost:3000>
+The app will be available at **http://localhost:3000**
 
-## challenges
+Default accounts:
 
-implemented css 3d transforms for card flip animations with react state synchronization. built dual filtering system maintaining separate state for study and manage views to prevent interference. created manual navigation preserving card flip state when moving between cards. developed atomic database reset operation using transaction to delete all records then re-seed defaults ensuring consistency. handled sqlite persistence across container restarts using docker named volumes.
+| Username | Password | Role |
+|----------|----------|------|
+| admin | admin123 | admin |
+| amy | 123 | user |
+| yunz | meow | user |
 
+**Environment variables**
 
-# Assignemnt 2 Extension
+| Variable | Description |
+|----------|-------------|
+| `SECRET_KEY` | JWT signing secret — change this before deploying |
+| `API_HOST` | Backend URL used by the Vite dev proxy |
 
+**Running tests**
 
-python3 -m app.seed to seed - added logging
-python3 -m pytest tests/
+```bash
+docker compose exec backend python -m pytest tests/ -v
+```
 
-- **`POST /api/register`** — creates a new user with a bcrypt-hashed password and returns a jwt - prevents duplicate usernames with a `400`
-- **`POST /api/login`** — verifies password against stored hash; returns a jwt on success, `401` when  wrong
-- **`GET /api/me`** — decodes the bearer token and returns the authenticated username; `401` if missing or invalid
+---
 
-- **why jwt?** stateless — the backend doesn't need a session store; tokens expire after 24 h
-- **why bcrypt?** slow by design, resistant to brute-force
+## Folder Structure
+
+```
+junk-yard/
+├── docker-compose.yml
+├── backend/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── app/
+│       ├── main.py         # route handlers
+│       ├── models.py       # ORM models: User, Flashcard, CardView, UserCardProgress
+│       ├── schemas.py      # Pydantic request/response types
+│       ├── crud.py         # database query functions
+│       ├── auth.py         # JWT, password hashing, FastAPI auth dependencies
+│       ├── database.py     # SQLAlchemy engine and session
+│       └── seed.py         # default users and flashcard data
+│   └── tests/
+│       ├── conftest.py         # shared fixtures
+│       ├── test_auth.py        # auth and password tests
+│       ├── test_flashcards.py  # flashcard CRUD and per-user progress tests
+│       └── test_users.py       # user management and access control tests
+└── frontend/
+    ├── Dockerfile
+    ├── package.json
+    ├── vite.config.js
+    ├── tailwind.config.js
+    └── src/
+        ├── App.jsx                     # root component, global state, navigation
+        ├── App.css                     # Tailwind directives and flip animation
+        ├── main.jsx
+        ├── services/
+        │   └── api.js                  # all backend fetch calls
+        └── components/
+            ├── Login.jsx               # login and register form
+            ├── Flashcard.jsx           # flip card component
+            ├── FlashcardForm.jsx       # add card modal (admin only)
+            ├── CardList.jsx            # manage view card grid
+            ├── AdminPanel.jsx          # user list table (admin only)
+            ├── UserProfile.jsx         # user detail, history, edit
+            └── ChangePasswordForm.jsx  # self-service password change
+```
+
+---
+
+## Workload Allocation
+
+### Amy (0melette)
+- `backend/app/auth.py` — JWT token creation/decoding, password hashing, `get_current_user`, `require_admin`, `get_optional_user`
+- `backend/app/main.py` — `/api/register`, `/api/login`, `/api/me` endpoints
+- `backend/app/schemas.py` — `AuthRequest`, `AuthResponse`, `SelfChangePassword`
+- `frontend/src/components/Login.jsx` — login and register UI
+- `frontend/src/components/UserProfile.jsx` — profile display and practice history
+- `frontend/src/components/ChangePasswordForm.jsx` — self-service password change
+- `backend/tests/test_auth.py`
+
+### yunz-dev
+- `backend/app/models.py` — all ORM models
+- `backend/app/crud.py` — all database query functions
+- `backend/app/main.py` — flashcard, user management, progress and view endpoints
+- `backend/app/seed.py`
+- `frontend/src/App.jsx` — root component, search and filter logic
+- `frontend/src/services/api.js`
+- `frontend/src/components/CardList.jsx`
+- `frontend/src/components/FlashcardForm.jsx`
+- `frontend/src/components/Flashcard.jsx`
+- `frontend/src/components/AdminPanel.jsx`
+- `frontend/src/components/UserProfile.jsx` — admin edit form section
+- `backend/tests/conftest.py`, `test_flashcards.py`, `test_users.py`
