@@ -26,7 +26,7 @@ cd junk-yard
 docker compose up --build
 ```
 
-The app will be available at **http://localhost:3000**
+The app will be available at **<http://localhost:3000>**
 
 Default accounts:
 
@@ -97,7 +97,8 @@ junk-yard/
 
 ## Workload Allocation
 
-### Amy (0melette)
+### Amy Zhou (0melette) 24848095
+
 - `backend/app/auth.py` — JWT token creation/decoding, password hashing, `get_current_user`, `require_admin`, `get_optional_user`
 - `backend/app/main.py` — `/api/register`, `/api/login`, `/api/me` endpoints
 - `backend/app/schemas.py` — `AuthRequest`, `AuthResponse`, `SelfChangePassword`
@@ -106,7 +107,8 @@ junk-yard/
 - `frontend/src/components/ChangePasswordForm.jsx` — self-service password change
 - `backend/tests/test_auth.py`
 
-### yunz-dev
+### Yunus Sayed (yunz-dev) 24774123
+
 - `backend/app/models.py` — all ORM models
 - `backend/app/crud.py` — all database query functions
 - `backend/app/main.py` — flashcard, user management, progress and view endpoints
