@@ -1,4 +1,4 @@
-export default function CardList({ cards, onDelete }) {
+export default function CardList({ cards, onDelete, isAdmin }) {
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">Manage Flashcards</h2>
@@ -16,12 +16,14 @@ export default function CardList({ cards, onDelete }) {
                   {card.category}
                 </div>
               </div>
-              <button
-                className="w-full px-4 py-2 bg-primary-red text-white border-2 border-black font-medium hover:bg-red-700 transition-colors"
-                onClick={() => onDelete(card.id)}
-              >
-                Delete
-              </button>
+              {isAdmin && (
+                <button
+                  className="w-full px-4 py-2 bg-primary-red text-white border-2 border-black font-medium hover:bg-red-700 transition-colors"
+                  onClick={() => onDelete(card.id)}
+                >
+                  Delete
+                </button>
+              )}
             </div>
           ))}
         </div>

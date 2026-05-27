@@ -1,15 +1,22 @@
 import { useState, useEffect } from 'react';
-import { Dog, ChevronLeft, ChevronRight, Shuffle, LogOut } from 'lucide-react';
+import { Dog, ChevronLeft, ChevronRight, Shuffle, LogOut, Users, Settings } from 'lucide-react';
 import Flashcard from './components/Flashcard';
 import FlashcardForm from './components/FlashcardForm';
 import CardList from './components/CardList';
 import Login from './components/Login';
-import { flashcardAPI } from './services/api';
+import AdminPanel from './components/AdminPanel';
+import UserProfile from './components/UserProfile';
+import { flashcardAPI, userAPI } from './services/api';
 import './App.css';
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [username, setUsername] = useState(() => localStorage.getItem('username') || '');
+  const [role, setRole] = useState(() => localStorage.getItem('role') || '');
+  const [currentUserId, setCurrentUserId] = useState(() => {
+    const id = localStorage.getItem('userId');
+    return id ? parseInt(id) : null;
+  });
   const [allCards, setAllCards] = useState([]);
   const [studyCards, setStudyCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -17,20 +24,38 @@ export default function App() {
   const [view, setView] = useState('study');
   const [studyCategory, setStudyCategory] = useState('');
   const [manageCategory, setManageCategory] = useState('');
+  const [manageSearch, setManageSearch] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [loadError, setLoadError] = useState('');
 
-  const handleLogin = (accessToken, user) => {
+  const isAdmin = role === 'admin';
+
+  const handleLogin = (accessToken, user, userRole) => {
     localStorage.setItem('token', accessToken);
     localStorage.setItem('username', user);
+    localStorage.setItem('role', userRole);
     setToken(accessToken);
     setUsername(user);
+    setRole(userRole);
+    fetch('/api/me', { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then(r => r.json())
+      .then(data => {
+        localStorage.setItem('userId', data.id);
+        setCurrentUserId(data.id);
+      });
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('role');
+    localStorage.removeItem('userId');
     setToken(null);
     setUsername('');
+    setRole('');
+    setCurrentUserId(null);
     setAllCards([]);
+    setView('study');
   };
 
   useEffect(() => {
@@ -42,8 +67,13 @@ export default function App() {
   }, [allCards, studyCategory]);
 
   const loadCards = async () => {
-    const cards = await flashcardAPI.getAll();
-    setAllCards(cards);
+    try {
+      const cards = await flashcardAPI.getAll();
+      setAllCards(cards);
+      setLoadError('');
+    } catch {
+      setLoadError('Failed to load flashcards. Please try again.');
+    }
   };
 
   const filterStudyCards = () => {
@@ -63,13 +93,21 @@ export default function App() {
 
   const handlePrev = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+      const nextIndex = currentIndex - 1;
+      setCurrentIndex(nextIndex);
+      if (token && studyCards[nextIndex]) {
+        flashcardAPI.recordView(studyCards[nextIndex].id);
+      }
     }
   };
 
   const handleNext = () => {
     if (currentIndex < studyCards.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      const nextIndex = currentIndex + 1;
+      setCurrentIndex(nextIndex);
+      if (token && studyCards[nextIndex]) {
+        flashcardAPI.recordView(studyCards[nextIndex].id);
+      }
     }
   };
 
@@ -86,22 +124,33 @@ export default function App() {
 
   const handleReset = async () => {
     const confirmed = window.confirm(
-      'Are you sure you want to reset the database? This will delete all custom flashcards and restore only the 50 default cards.'
+      'Reset all flashcards to the 50 defaults? This will delete all custom cards.'
     );
-
     if (confirmed) {
-      await flashcardAPI.resetStudied();
+      await fetch('/api/reset', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       await loadCards();
       setStudyCategory('');
       setManageCategory('');
     }
   };
 
+  const handleSelectUser = (userId) => {
+    setSelectedUserId(userId);
+    setView('profile');
+  };
+
   const getManageCards = () => {
-    if (manageCategory) {
-      return allCards.filter(c => c.category === manageCategory);
+    let cards = allCards;
+    if (manageCategory) cards = cards.filter(c => c.category === manageCategory);
+    if (manageSearch.trim()) {
+      const q = manageSearch.trim().toLowerCase();
+      cards = cards.filter(c =>
+        c.chinese.includes(manageSearch.trim()) ||
+        c.pinyin.toLowerCase().includes(q) ||
+        c.english.toLowerCase().includes(q)
+      );
     }
-    return allCards;
+    return cards;
   };
 
   const currentCard = studyCards[currentIndex];
@@ -118,7 +167,7 @@ export default function App() {
             <Dog className="w-8 h-8" strokeWidth={2} />
             <h1 className="text-3xl font-bold tracking-tight">Ni-Howl</h1>
           </div>
-          <nav className="flex gap-2">
+          <nav className="flex gap-2 flex-wrap justify-center">
             <button
               className={`px-6 py-2 border-2 border-black font-medium transition-colors ${
                 view === 'study' ? 'bg-primary-red text-white' : 'bg-white text-black hover:bg-gray-100'
@@ -127,27 +176,55 @@ export default function App() {
             >
               Study
             </button>
+            {isAdmin && (
+              <button
+                className={`px-6 py-2 border-2 border-black font-medium transition-colors ${
+                  view === 'manage' ? 'bg-primary-red text-white' : 'bg-white text-black hover:bg-gray-100'
+                }`}
+                onClick={() => setView('manage')}
+              >
+                Manage
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                className={`px-6 py-2 border-2 border-black font-medium transition-colors flex items-center gap-2 ${
+                  view === 'admin' ? 'bg-primary-red text-white' : 'bg-white text-black hover:bg-gray-100'
+                }`}
+                onClick={() => setView('admin')}
+              >
+                <Users className="w-4 h-4" />
+                Users
+              </button>
+            )}
             <button
-              className={`px-6 py-2 border-2 border-black font-medium transition-colors ${
-                view === 'manage' ? 'bg-primary-red text-white' : 'bg-white text-black hover:bg-gray-100'
+              className={`px-4 py-2 border-2 border-black font-medium transition-colors flex items-center gap-2 ${
+                view === 'profile' && selectedUserId === currentUserId
+                  ? 'bg-primary-red text-white'
+                  : 'bg-white text-black hover:bg-gray-100'
               }`}
-              onClick={() => setView('manage')}
+              onClick={() => { setSelectedUserId(currentUserId); setView('profile'); }}
+              title="My Account"
             >
-              Manage
+              <Settings className="w-4 h-4" />
+              <span className="hidden md:inline">{username}</span>
             </button>
             <button
-              className="px-4 py-2 border-2 border-black font-medium hover:bg-gray-100 transition-colors flex items-center gap-2 ml-4"
+              className="px-4 py-2 border-2 border-black font-medium hover:bg-gray-100 transition-colors flex items-center gap-2"
               onClick={handleLogout}
-              title={`Logged in as ${username}`}
             >
               <LogOut className="w-4 h-4" />
-              <span className="hidden md:inline">{username}</span>
             </button>
           </nav>
         </header>
 
         <main className="min-h-[500px]">
-          {view === 'study' ? (
+          {loadError && (
+            <div className="mb-6 px-4 py-3 border-2 border-black bg-red-50 text-red-800 font-medium">
+              {loadError}
+            </div>
+          )}
+          {view === 'study' && (
             <div className="flex flex-col items-center gap-8">
               <div className="flex flex-col md:flex-row gap-4 w-full max-w-2xl">
                 <select
@@ -174,12 +251,6 @@ export default function App() {
                 >
                   <Shuffle className="w-4 h-4" />
                   Shuffle
-                </button>
-                <button
-                  className="px-6 py-3 bg-primary-yellow border-2 border-black font-medium hover:bg-yellow-300 transition-colors"
-                  onClick={handleReset}
-                >
-                  Reset All
                 </button>
               </div>
 
@@ -217,19 +288,28 @@ export default function App() {
                 </div>
               )}
             </div>
-          ) : (
+          )}
+
+          {view === 'manage' && isAdmin && (
             <div className="flex flex-col gap-8">
-              <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex flex-col md:flex-row gap-4 flex-wrap">
                 <button
                   className="px-6 py-3 bg-primary-red text-white border-2 border-black font-medium hover:bg-red-700 transition-colors"
                   onClick={() => setShowForm(true)}
                 >
                   Add New Card
                 </button>
+                <input
+                  type="text"
+                  placeholder="Search cards..."
+                  value={manageSearch}
+                  onChange={(e) => setManageSearch(e.target.value)}
+                  className="flex-1 px-4 py-3 border-2 border-black text-base focus:outline-none focus:ring-2 focus:ring-primary-red"
+                />
                 <select
                   value={manageCategory}
                   onChange={(e) => setManageCategory(e.target.value)}
-                  className="flex-1 md:flex-none md:w-64 px-4 py-3 border-2 border-black text-base focus:outline-none focus:ring-2 focus:ring-primary-red"
+                  className="md:w-48 px-4 py-3 border-2 border-black text-base focus:outline-none focus:ring-2 focus:ring-primary-red"
                 >
                   <option value="">All Categories</option>
                   <option value="HSK 1">HSK 1</option>
@@ -243,9 +323,28 @@ export default function App() {
                   <option value="Food">Food</option>
                   <option value="Travel">Travel</option>
                 </select>
+                <button
+                  className="px-6 py-3 bg-primary-yellow border-2 border-black font-medium hover:bg-yellow-300 transition-colors"
+                  onClick={handleReset}
+                >
+                  Reset All Cards
+                </button>
               </div>
-              <CardList cards={getManageCards()} onDelete={handleDeleteCard} />
+              <CardList cards={getManageCards()} onDelete={handleDeleteCard} isAdmin={isAdmin} />
             </div>
+          )}
+
+          {view === 'admin' && isAdmin && (
+            <AdminPanel onSelectUser={handleSelectUser} />
+          )}
+
+          {view === 'profile' && selectedUserId && (
+            <UserProfile
+              userId={selectedUserId}
+              currentUser={{ id: currentUserId, username, isAdmin }}
+              onBack={() => setView(isAdmin ? 'admin' : 'study')}
+              onUserDeleted={() => setView('admin')}
+            />
           )}
         </main>
 

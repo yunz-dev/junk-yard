@@ -76,11 +76,88 @@ export const flashcardAPI = {
     return response.json();
   },
 
-  resetStudied: async () => {
-    const response = await fetch(`${API_BASE}/reset`, {
-      method: 'POST',
+  recordView: async (id) => {
+    try {
+      await fetch(`${API_BASE}/flashcards/${id}/view`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+    } catch (_) {
+      // ignore
+    }
+  },
+
+  markStudied: async (id, studied = true) => {
+    const response = await fetch(`${API_BASE}/flashcards/${id}/studied`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ studied }),
+    });
+    return response.json();
+  },
+};
+
+export const userAPI = {
+  getMe: async () => {
+    const response = await fetch(`${API_BASE}/me`, {
       headers: authHeaders(),
     });
     return response.json();
+  },
+
+  getAll: async () => {
+    const response = await fetch(`${API_BASE}/users`, {
+      headers: authHeaders(),
+    });
+    return response.json();
+  },
+
+  getOne: async (id) => {
+    const response = await fetch(`${API_BASE}/users/${id}`, {
+      headers: authHeaders(),
+    });
+    return response.json();
+  },
+
+  update: async (id, data) => {
+    const response = await fetch(`${API_BASE}/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || 'Update failed');
+    return result;
+  },
+
+  delete: async (id) => {
+    const response = await fetch(`${API_BASE}/users/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || 'Delete failed');
+    return result;
+  },
+
+  changePassword: async (current_password, new_password) => {
+    const response = await fetch(`${API_BASE}/me`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ current_password, new_password }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || 'Password change failed');
+    return result;
+  },
+
+  resetProgress: async (userId) => {
+    const response = await fetch(`${API_BASE}/users/${userId}/reset-progress`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || 'Reset failed');
+    return result;
   },
 };
