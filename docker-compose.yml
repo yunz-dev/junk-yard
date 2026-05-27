@@ -5,7 +5,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
-      - sqlite-data:/app
+      - sqlite-data:/app/data
     environment:
       - PYTHONUNBUFFERED=1
 
@@ -16,6 +16,8 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    environment:
+      - API_HOST=http://backend:8000
     depends_on:
       - backend
 

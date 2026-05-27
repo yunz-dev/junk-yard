@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -7,6 +8,7 @@ from .seed import seed_database, add_default_cards
 from .auth import hash_password, verify_password, create_access_token, decode_access_token
 from .schemas import AuthRequest
 
+os.makedirs("data", exist_ok=True)
 models.Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
