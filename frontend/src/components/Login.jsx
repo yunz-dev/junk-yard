@@ -28,7 +28,7 @@ export default function Login({ onLogin }) {
       const result = mode === 'login'
         ? await authAPI.login(username, password)
         : await authAPI.register(username, password);
-      onLogin(result.access_token, result.username);
+      onLogin(result.access_token, result.username, result.role);
     } catch (err) {
       setError(err.message || 'Something went wrong');
     } finally {
