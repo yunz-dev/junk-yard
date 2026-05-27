@@ -1,5 +1,11 @@
 from sqlalchemy.orm import Session
 from . import models
+from .auth import hash_password
+
+DEFAULT_USERS = [
+    {"username": "amy", "password": "123"},
+    {"username": "yunz",  "password": "meow"},
+]
 
 DEFAULT_CARDS = [
     {"chinese": "你好", "pinyin": "nǐ hǎo", "english": "hello", "category": "Greetings"},
@@ -64,15 +70,38 @@ DEFAULT_CARDS = [
 ]
 
 def seed_database(db: Session):
+    seed_users(db)
     existing = db.query(models.Flashcard).count()
+    
+    print(f"Starting seed: {existing} flashcards already exist")
     if existing == 0:
         for card_data in DEFAULT_CARDS:
             card = models.Flashcard(**card_data)
             db.add(card)
         db.commit()
 
+    # Print summary of seeded data
+    user_count = db.query(models.User).count()
+    card_count = db.query(models.Flashcard).count()
+    print(f"Seed complete: {user_count} users, {card_count} flashcards")
+
 def add_default_cards(db: Session):
     for card_data in DEFAULT_CARDS:
         card = models.Flashcard(**card_data)
         db.add(card)
     db.commit()
+
+def seed_users(db: Session):
+    if db.query(models.User).count() == 0:
+        for u in DEFAULT_USERS:
+            db.add(models.User(username=u["username"], 
+                hashed_password=hash_password(u["password"])))
+    db.commit()
+
+if __name__ == "__main__":
+    from .database import SessionLocal
+    db = SessionLocal()
+    try:
+        seed_database(db)
+    finally:
+        db.close()
